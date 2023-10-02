@@ -135,11 +135,11 @@ Outputs:
   VPCId:
     Description: VPC ID
     Value: !Ref VPC
-  PublicSubnet1Id:
-    Description: Public Subnet 1 ID
+  Subnet1Id:
+    Description: Subnet 1 ID
     Value: !If [CreatePublicSubnet1, !Ref PublicSubnet1, !Ref PrivateSubnet1]
-  PublicSubnet2Id:
-    Description: Public Subnet 2 ID
+  Subnet2Id:
+    Description: Subnet 2 ID
     Value: !If [CreatePublicSubnet2, !Ref PublicSubnet2, !Ref PrivateSubnet2]
   ECSClusterName:
     Description: ECS Cluster Name
