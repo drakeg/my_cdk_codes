@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for an AWS Fargate ECS stack.
+
+Parameters:
+  VpcCidrBlock:
+    Description: CIDR block for the VPC.
+    Type: String
+    Default: '10.0.0.0/16'
+
+  Subnet1CidrBlock:
+    Description: CIDR block for Public Subnet 1.
+    Type: String
+    Default: '10.0.0.0/24'
+
+  Subnet2CidrBlock:
+    Description: CIDR block for Public Subnet 2.
+    Type: String
+    Default: '10.0.1.0/24'
+
+  ResourceNamePrefix:
+    Description: Prefix for resource names (e.g., MyApp for MyAppVPC, MyAppCluster, etc.).
+    Type: String
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceNamePrefix}-VPC'
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref Subnet1CidrBlock
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceNamePrefix}-Public-Subnet-1'
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref Subnet2CidrBlock
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceNamePrefix}-Public-Subnet-2'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceNamePrefix}-IGW'
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${ResourceNamePrefix}-ECS-Cluster'
+
+Outputs:
+  VPCId:
+    Description: VPC ID
+    Value: !Ref VPC
+  PublicSubnet1Id:
+    Description: Public Subnet 1 ID
+    Value: !Ref PublicSubnet1
+  PublicSubnet2Id:
+    Description: Public Subnet 2 ID
+    Value: !Ref PublicSubnet2
+  ECSClusterName:
+    Description: ECS Cluster Name
+    Value: !Sub '${ResourceNamePrefix}-ECS-Cluster'
