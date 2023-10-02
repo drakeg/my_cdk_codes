@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for an AWS Fargate ECS stack.
+Description: CloudFormation template for an AWS Fargate ECS stack with flexible subnet types.
 
 Parameters:
   VpcCidrBlock:
@@ -8,14 +8,30 @@ Parameters:
     Default: '10.0.0.0/16'
 
   Subnet1CidrBlock:
-    Description: CIDR block for Public Subnet 1.
+    Description: CIDR block for Subnet 1.
     Type: String
     Default: '10.0.0.0/24'
 
+  Subnet1Type:
+    Description: Subnet 1 type (public or private).
+    Type: String
+    Default: 'public'
+    AllowedValues:
+      - public
+      - private
+
   Subnet2CidrBlock:
-    Description: CIDR block for Public Subnet 2.
+    Description: CIDR block for Subnet 2.
     Type: String
     Default: '10.0.1.0/24'
+
+  Subnet2Type:
+    Description: Subnet 2 type (public or private).
+    Type: String
+    Default: 'public'
+    AllowedValues:
+      - public
+      - private
 
   ResourceNamePrefix:
     Description: Prefix for resource names (e.g., MyApp for MyAppVPC, MyAppCluster, etc.).
@@ -34,6 +50,7 @@ Resources:
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
+    Condition: CreatePublicSubnet1
     Properties:
       AvailabilityZone: !Select [0, !GetAZs '']
       CidrBlock: !Ref Subnet1CidrBlock
@@ -43,8 +60,20 @@ Resources:
         - Key: Name
           Value: !Sub '${ResourceNamePrefix}-Public-Subnet-1'
 
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Condition: CreatePrivateSubnet1
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref Subnet1CidrBlock
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceNamePrefix}-Private-Subnet-1'
+
   PublicSubnet2:
     Type: AWS::EC2::Subnet
+    Condition: CreatePublicSubnet2
     Properties:
       AvailabilityZone: !Select [1, !GetAZs '']
       CidrBlock: !Ref Subnet2CidrBlock
@@ -54,8 +83,20 @@ Resources:
         - Key: Name
           Value: !Sub '${ResourceNamePrefix}-Public-Subnet-2'
 
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Condition: CreatePrivateSubnet2
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref Subnet2CidrBlock
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourceNamePrefix}-Private-Subnet-2'
+
   InternetGateway:
     Type: AWS::EC2::InternetGateway
+    Condition: CreatePublicSubnet1
     Properties:
       Tags:
         - Key: Name
@@ -63,6 +104,7 @@ Resources:
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
+    Condition: CreatePublicSubnet1
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
@@ -72,16 +114,33 @@ Resources:
     Properties:
       ClusterName: !Sub '${ResourceNamePrefix}-ECS-Cluster'
 
+Conditions:
+  CreatePublicSubnet1:
+    Fn::Equals:
+      - !Ref Subnet1Type
+      - 'public'
+  CreatePrivateSubnet1:
+    Fn::Not:
+      - Condition: CreatePublicSubnet1
+
+  CreatePublicSubnet2:
+    Fn::Equals:
+      - !Ref Subnet2Type
+      - 'public'
+  CreatePrivateSubnet2:
+    Fn::Not:
+      - Condition: CreatePublicSubnet2
+
 Outputs:
   VPCId:
     Description: VPC ID
     Value: !Ref VPC
   PublicSubnet1Id:
     Description: Public Subnet 1 ID
-    Value: !Ref PublicSubnet1
+    Value: !If [CreatePublicSubnet1, !Ref PublicSubnet1, !Ref PrivateSubnet1]
   PublicSubnet2Id:
     Description: Public Subnet 2 ID
-    Value: !Ref PublicSubnet2
+    Value: !If [CreatePublicSubnet2, !Ref PublicSubnet2, !Ref PrivateSubnet2]
   ECSClusterName:
     Description: ECS Cluster Name
     Value: !Sub '${ResourceNamePrefix}-ECS-Cluster'
